@@ -257,7 +257,7 @@ def view_progress(progress):
     input("\nPress Enter to continue...")
 
 def load_email_config():
-    default_config = {"sender_email": "ysarigu@entergy.com", "recipient_email": "tliggan@entergy.com", "cc_email": "wlotte1@entergy.com"}
+    default_config = {"sender_email": "ysarigu@entergy.com", "recipient_email": "ysarigu@entergy.com", "cc_email": "ysarigu@entergy.com"}
     return init_json(CONFIG_FILE, default_config)
 
 def setup_email_config():

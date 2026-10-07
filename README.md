@@ -85,8 +85,8 @@ old_work/  (created on each send)
 ### Email Configuration
 Default emails:
 - Sender: ysarigu@entergy.com
-- Recipient: tliggan@entergy.com
-- CC: wlotte1@entergy.com
+- Recipient: ysarigu@entergy.com
+- CC: ysarigu@entergy.com
 
 Use option 5 to update these anytime.
 
