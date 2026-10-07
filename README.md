@@ -91,7 +91,7 @@ Default emails:
 Use option 5 to update these anytime.
 
 ## First Run
-1. Run: `python ctp_study_guide_tracker.py`
+1. Run: `python ctp_tracker.py`
 2. Choose option 6 to install dependencies (pywin32)
 3. Set up email config (option 5) if needed
 4. Start logging work (option 1)!
