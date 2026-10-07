@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+db.sqlite3
+
+# Local tracker data and email configuration
+/ctp_progress.json
+/sent_history.json
+/email_config.json
+/evidence/
+/old_work/
+/evidence.zip

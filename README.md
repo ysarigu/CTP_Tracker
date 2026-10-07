@@ -95,3 +95,31 @@ Use option 5 to update these anytime.
 2. Choose option 6 to install dependencies (pywin32)
 3. Set up email config (option 5) if needed
 4. Start logging work (option 1)!
+
+## Django Web App
+
+The Django interface uses the same `ctp_progress.json` and `evidence/` directory as
+`ctp_tracker.py`. You can continue using the original command-line tracker; entries
+logged in either interface appear in the other. Avoid writing to the tracker from
+both interfaces at the same time.
+
+From the project directory, install the web dependencies and start Django:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 127.0.0.1:8000
+```
+
+Open <http://127.0.0.1:8000/> in your browser. The development server is intended
+for local use; it is not configured for public deployment.
+
+The web email form uses the sender, recipient, and CC addresses saved in the existing
+`email_config.json`. It does not require SMTP: choose **Download supervisor email
+draft**, then open the downloaded `.eml` file in your email app and review/send it
+there. Evidence files are attached in a ZIP. After sending, return to the tracker and
+choose **I sent the draft — mark progress as sent**. Only then is the shared
+`sent_history.json` cutoff updated, so unsent drafts do not hide progress from a later
+draft. The original CLI's Outlook email option remains unchanged.

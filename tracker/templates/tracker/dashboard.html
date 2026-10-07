@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CTP Progress Tracker</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #182230; background: #f3f6fa; }
+    body { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+    h1, h2, h3 { margin-top: 0; }
+    .summary, .card, .form-card { background: white; border: 1px solid #d9e1ec; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+    .summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
+    .grid .card { margin: 0; }
+    .card { min-width: 0; overflow-wrap: anywhere; }
+    .muted { color: #526174; }
+    .entry { min-width: 0; border-top: 1px solid #e6ebf2; padding-top: .75rem; margin-top: .75rem; }
+    .entry p { overflow-wrap: anywhere; white-space: pre-wrap; }
+    .entry code { overflow-wrap: anywhere; word-break: break-word; }
+    label { display: block; font-weight: 600; margin: .75rem 0 .25rem; }
+    input, select, textarea, button { box-sizing: border-box; font: inherit; width: 100%; padding: .6rem; border: 1px solid #aab7c8; border-radius: 6px; }
+    textarea { min-height: 5rem; }
+    button { width: auto; margin-top: .75rem; background: #155eef; border-color: #155eef; color: white; cursor: pointer; }
+    .complete button { background: #157347; border-color: #157347; }
+    .messages { list-style: none; padding: 0; }
+    .messages li { background: #e8f1ff; border-radius: 6px; padding: .75rem; margin-bottom: .5rem; }
+    @media (max-width: 550px) { .summary { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CTP Progress Tracker</h1>
+    <p class="muted">Web interface for the existing tracker data. Changes are shared with <code>ctp_tracker.py</code>.</p>
+  </header>
+
+  {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
+  <section class="summary">
+    <div>
+      <h2>Overall progress</h2>
+      <p>{{ completed_count }} of {{ total_sections }} section tests complete ({{ completion_percent }}%)</p>
+    </div>
+    <strong>{{ completion_percent }}%</strong>
+  </section>
+
+  <section class="form-card">
+    <h2>Log work</h2>
+    <form method="post" action="{% url 'tracker:log_work' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <label for="section">Section</label>
+      <select id="section" name="section" required>
+        <option value="">Choose a section</option>
+        {% for section in sections %}<option value="{{ section.id }}">{{ section.name }}</option>{% endfor %}
+      </select>
+
+      <label for="topic">Topic</label>
+      <select id="topic" name="topic" required disabled>
+        <option value="">Choose a section first</option>
+      </select>
+
+      <label for="work_description">What did you work on?</label>
+      <textarea id="work_description" name="work_description" required></textarea>
+      <label for="notes">Notes for your supervisor (optional)</label>
+      <textarea id="notes" name="notes"></textarea>
+      <label for="evidence_files">Evidence files (optional; select multiple if needed)</label>
+      <input id="evidence_files" type="file" name="evidence_files" multiple>
+      <button type="submit">Save work entry</button>
+    </form>
+  </section>
+
+  <section class="form-card">
+    <h2>Supervisor email</h2>
+    <p class="muted">
+      This creates a draft for you to review and send in your email app. It does not send automatically.
+      Open the downloaded <code>.eml</code> file in your email app; after sending, confirm below so this progress is not included in the next draft.
+    </p>
+    <form method="post" action="{% url 'tracker:email_settings' %}">
+      {% csrf_token %}
+      <label for="sender_email">Sender email</label>
+      <input id="sender_email" name="sender_email" type="email" value="{{ email_config.sender_email }}" required>
+      <label for="recipient_email">Supervisor email</label>
+      <input id="recipient_email" name="recipient_email" type="text" value="{{ email_config.recipient_email }}" placeholder="name@example.com" required>
+      <label for="cc_email">CC email (optional; separate multiple addresses with commas)</label>
+      <input id="cc_email" name="cc_email" type="text" value="{{ email_config.cc_email }}" placeholder="name@example.com">
+      <button type="submit">Save email addresses</button>
+    </form>
+    <form method="post" action="{% url 'tracker:email_draft' %}">
+      {% csrf_token %}
+      <button type="submit" {% if not email_configured or not has_new_entries %}disabled{% endif %}>
+        Download supervisor email draft
+      </button>
+      {% if not has_new_entries %}<p class="muted">No unsent progress entries yet.</p>{% endif %}
+    </form>
+    {% if has_pending_draft %}
+      <form method="post" action="{% url 'tracker:mark_email_sent' %}">
+        {% csrf_token %}
+        <button type="submit" onclick="return confirm('Have you sent this email draft?')">I sent the draft — mark progress as sent</button>
+      </form>
+    {% endif %}
+  </section>
+
+  <h2>Sections</h2>
+  <section class="grid">
+    {% for section in sections %}
+      <article class="card {% if section.data.status == 'tested' %}complete{% endif %}">
+        <h3>{{ section.name }}</h3>
+        <p><strong>Status:</strong> {{ section.data.status|title }} · {{ section.data.entries|length }} entries</p>
+        {% if section.data.status != "tested" %}
+          <form method="post" action="{% url 'tracker:mark_section_test' section.id %}">
+            {% csrf_token %}
+            <button type="submit" onclick="return confirm('Mark {{ section.name|escapejs }} test complete?')">Mark test complete</button>
+          </form>
+        {% endif %}
+        {% for entry in section.data.entries reversed %}
+          <div class="entry">
+            {% if entry.section_test %}
+              <strong>Section test completed</strong>
+            {% else %}
+              <strong>{{ entry.topic }}</strong>
+              <p>{{ entry.work_description }}</p>
+              {% if entry.notes %}<p class="muted">Notes: {{ entry.notes }}</p>{% endif %}
+              {% if entry.files %}
+                <p class="muted">Evidence: {% for file in entry.files %}<code>{{ file }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+              {% endif %}
+            {% endif %}
+            <small class="muted">{{ entry.timestamp }}</small>
+          </div>
+        {% empty %}
+          <p class="muted">No work logged yet.</p>
+        {% endfor %}
+      </article>
+    {% endfor %}
+  </section>
+  {{ topic_map|json_script:"topics-by-section" }}
+  <script>
+    const sectionSelect = document.getElementById("section");
+    const topicSelect = document.getElementById("topic");
+    const topicsBySection = JSON.parse(document.getElementById("topics-by-section").textContent);
+
+    sectionSelect.addEventListener("change", () => {
+      const sectionTopics = topicsBySection[sectionSelect.value] || [];
+      topicSelect.replaceChildren(new Option(
+        sectionTopics.length ? "Choose a topic" : "Choose a section first",
+        ""
+      ));
+      for (const topic of sectionTopics) {
+        topicSelect.add(new Option(topic, topic));
+      }
+      topicSelect.disabled = sectionTopics.length === 0;
+    });
+  </script>
+</body>
+</html>
